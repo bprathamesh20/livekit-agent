@@ -17,6 +17,9 @@ load_dotenv(dotenv_path=".env.local")
 logger = logging.getLogger("voice-agent")
 
 
+
+
+
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
@@ -39,6 +42,7 @@ async def entrypoint(ctx: JobContext):
 
     # Wait for the first participant to connect
     participant = await ctx.wait_for_participant()
+    #fetch questions here using user_id = userId_questionsetId
     logger.info(f"starting voice assistant for participant {participant.identity}")
 
     # This project is configured to use Deepgram STT, OpenAI LLM and TTS plugins
@@ -56,7 +60,7 @@ async def entrypoint(ctx: JobContext):
     assistant.start(ctx.room, participant)
 
     # The agent should be polite and greet the user when it joins :)
-    await assistant.say("Hey There, I am alex and I am here conduct your interview., shall we begin?")
+    await assistant.say("Hey There, I am alex and I am here to conduct your interview, shall we begin ?")
 
 
 if __name__ == "__main__":
