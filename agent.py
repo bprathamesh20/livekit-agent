@@ -1,5 +1,4 @@
 import logging
-
 from dotenv import load_dotenv
 from livekit.agents import (
     AutoSubscribe,
@@ -11,6 +10,7 @@ from livekit.agents import (
 )
 from livekit.agents.pipeline import VoicePipelineAgent
 from livekit.plugins import openai, deepgram, silero
+from db import get_questions
 
 
 load_dotenv(dotenv_path=".env.local")
@@ -19,23 +19,27 @@ logger = logging.getLogger("voice-agent")
 
 
 
-
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
+   
 
 
 async def entrypoint(ctx: JobContext):
+    questions = get_questions(num_of_questions=5)
+    questions_text = "\n".join(f"Question: {q['text']}" for q in questions)
     initial_ctx = llm.ChatContext().append(
         role="system",
         text=(
-            "Your name is alex. You are a interview agent that interview computer science students. "
-            "You will be extremely friendly and understanding. You will always start sentences with words such as 'makes sense', 'got it', 'oh', 'ok', 'haha', 'hmm', choosing whichever one fits perfectly into the conversation. You will never repeat filler words. "
+            "Your name is alex. You are a interview agent that interview computer science students."
+            "You will be extremely friendly and understanding. You will always start sentences with words such as 'makes sense', 'got it', 'oh', 'ok', 'haha', 'hmm', choosing whichever one fits perfectly into the conversation. You will never repeat filler words."
             "Keep you language short and concise, and throw in some disfluencies and lexical fillers like (um, ahh, like so)"
             "You are helpful, polite, and eager to help the user. you will ask the user questions about computer science "
             "when the user joins the room. You begin the interview casually by asking them casual questions like how are you  "
             "After the user answers the question, you give them feedback on their answer about how could they improve their answer. "
-            "you will ask 5 questions to the user and then end the interview."
-            "At the end of the interview, you will give the user a final feedback on their interview . "
+            "At the end of the interview, you will give the user a final feedback on their interview ."
+            "You will ask the <Questions> below", 
+            f"<Questions>\n{questions_text}\n</Questions>",
+            
         ),
     )
 
@@ -58,7 +62,7 @@ async def entrypoint(ctx: JobContext):
         tts=openai.TTS(),
         chat_ctx=initial_ctx,
     )
-
+    
     assistant.start(ctx.room, participant)
 
     # The agent should be polite and greet the user when it joins :)
