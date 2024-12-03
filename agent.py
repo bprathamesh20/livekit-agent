@@ -1,5 +1,6 @@
 import logging
 from dotenv import load_dotenv
+from typing import Annotated
 from livekit.agents import (
     AutoSubscribe,
     JobContext,
@@ -17,7 +18,34 @@ load_dotenv(dotenv_path=".env.local")
 logger = logging.getLogger("voice-agent")
 
 
+class AssistantFnc(llm.FunctionContext):
+    @llm.ai_callable()
+    async def get_interview_questions(
+        self,
+    ):
+        """Retrieve interview questions at the start of the interview"""
+        try:
+            # Call the function to get questions
+            questions = await get_questions()
+            
+            # Validate and format questions
+            if not questions or not isinstance(questions, list):
+                return "Unable to retrieve questions or the response is not a valid list."
+            
+            # Convert questions to string format
+            questions_text = str(questions)
+            
+            # Print the formatted questions
+            print(questions_text)
+            
+            # Return the questions text for use in the conversation context
+            return questions_text
 
+        except Exception as e:
+            print(f"Error retrieving questions: {e}")
+            return "Unable to retrieve questions due to an error."
+        
+fnc_ctx = AssistantFnc()
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
@@ -25,8 +53,6 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
-    questions = get_questions(num_of_questions=5)
-    questions_text = "\n".join(f"Question: {q['text']}" for q in questions)
     initial_ctx = llm.ChatContext().append(
         role="system",
         text=(
@@ -38,8 +64,6 @@ async def entrypoint(ctx: JobContext):
             "After the user answers the question, you give them feedback on their answer about how could they improve their answer. "
             "At the end of the interview, you will give the user a final feedback on their interview ."
             "You will ask the <Questions> below", 
-            f"<Questions>\n{questions_text}\n</Questions>",
-            
         ),
     )
 
@@ -61,6 +85,8 @@ async def entrypoint(ctx: JobContext):
         llm=openai.LLM(model="gpt-4o-mini"),
         tts=openai.TTS(),
         chat_ctx=initial_ctx,
+        fnc_ctx=fnc_ctx,
+
     )
     
     assistant.start(ctx.room, participant)
@@ -74,5 +100,6 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
+
         ),
     )

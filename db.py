@@ -12,6 +12,7 @@ def get_questions(num_of_questions=5):
         questions_collection = mydb["questions"]
         
         questions = list(questions_collection.aggregate([{"$sample": {"size": num_of_questions}}]))
+        print(questions)
         return questions
         
 
@@ -21,3 +22,6 @@ def get_questions(num_of_questions=5):
     finally:
         myclient.close()
         print("Connection closed.")
+
+
+get_questions()
